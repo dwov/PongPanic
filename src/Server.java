@@ -1,11 +1,9 @@
 import java.io.*;
 import java.net.*;
-import java.util.*;
 
 public class Server {
     private int ISPort;
     private int androidPort;
-    private String[][] highScore = new String[10][2];
     private Game game = new Game();
     private String line;
 
@@ -14,7 +12,7 @@ public class Server {
         this.androidPort = androidPort;
         //new Thread(new Connection()).start();
         new Thread(new UpdatePosition()).start();
-        new Thread(new ISConnection()).start();
+        new Thread(new ESConnection()).start();
         new Thread(new AndroidConnection()).start();
     }
 
@@ -23,7 +21,7 @@ public class Server {
      *
      * @author Samuel Palmhager
      */
-    public class ISConnection implements Runnable {
+    public class ESConnection implements Runnable {
         @Override
         public void run() {
             Socket socket;
@@ -35,8 +33,8 @@ public class Server {
                 while (true) {
                     socket = serverSocket.accept();
                     System.out.println("IS-Klient ansluten");
-                    //new Thread(new ISReader(socket)).start();
-                    new Thread(new ISWriter(socket)).start();
+                    //new Thread(new ESReader(socket)).start();
+                    new Thread(new ESWriter(socket)).start();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -44,11 +42,11 @@ public class Server {
         }
     }
     /**
-     * This class contains the thread which is intended to write to the embedder system
+     * This class contains the thread which is intended to write to the embedded system
      *
      * @author Samuel Palmhager
      */
-    public class ISWriter implements Runnable {
+    public class ESWriter implements Runnable {
         private Socket socket;
         private PrintWriter out;
         /**
@@ -57,7 +55,7 @@ public class Server {
          *
          * @author Samuel Palmhager
          */
-        public ISWriter(Socket socket) {
+        public ESWriter(Socket socket) {
             this.socket = socket;
             try {
                 out = new PrintWriter(socket.getOutputStream(), true);
@@ -99,7 +97,7 @@ public class Server {
      *
      * @author Samuel Palmhager
      */
-    public class ISReader implements Runnable {
+    public class ESReader implements Runnable {
         private Socket socket;
         private BufferedReader in;
         /**
@@ -107,7 +105,7 @@ public class Server {
          *
          * @author Samuel Palmhager
          */
-        public ISReader(Socket socket) {
+        public ESReader(Socket socket) {
             this.socket = socket;
             try {
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -158,7 +156,6 @@ public class Server {
          */
         @Override
         public void run() {
-            readHighScore();
             Socket socket;
             try {
                 ServerSocket serverSocket = new ServerSocket(androidPort);
@@ -284,102 +281,7 @@ public class Server {
         }
     }
 
-
-
-    /**
-     * Saves high score list to file.
-     */
-    private void writeHighScore() {
-        try {
-            FileWriter writer = new FileWriter("HighScore.txt");
-            int nbrHighScores = getNbrHighScores();
-            for (int i = 0; i < nbrHighScores; i++) {
-                writer.write(highScore[i][0] + " ");
-                writer.write(highScore[i][1]);
-                if (i != nbrHighScores-1) {
-                    writer.write("\n");
-                }
-            }
-            writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Reads high score list from file.
-     */
-    private void readHighScore() {
-        try {
-            File file = new File("src/HighScore.txt");
-            highScore = new String[10][2];
-            Scanner reader = new Scanner(file);
-            int counter = 0;
-            while (reader.hasNextLine()) {
-                highScore[counter][0] = reader.next();
-                highScore[counter][1] = reader.next();
-                counter++;
-            }
-            reader.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Sorts the high score list.
-     */
-    private void sortHighScores() {
-        boolean swapped = true;
-        int j = 0;
-        String tempName;
-        int tempPoints;
-        while (swapped) {
-            swapped = false;
-            j++;
-            for (int i = 0; i < highScore.length - j; i++) {
-                if (highScore[i][1] != null && highScore[i + 1][1] != null && Integer.parseInt(highScore[i][1]) >= Integer.parseInt(highScore[i + 1][1])) {
-                    tempName = highScore[i][0];
-                    tempPoints = Integer.parseInt(highScore[i][1]);
-                    highScore[i][0] = highScore[i + 1][0];
-                    highScore[i + 1][0] = tempName;
-                    highScore[i][1] = highScore[i + 1][1];
-                    highScore[i + 1][1] = tempPoints + "";
-                    swapped = true;
-                }
-            }
-        }
-    }
-
-    /**
-     * Finds and returns the lowest high score.
-     * @return an int
-     */
-    private int getLowestHighScore() {
-        for (int i = highScore.length-1; i >= 0; i--) {
-            if (highScore[i][1] != null) {
-                return Integer.parseInt(highScore[i][1]);
-            }
-        }
-        return 1;
-    }
-
-    /**
-     * Calculates and returns the number of high scores currently on the list.
-     * @return an int
-     */
-    private int getNbrHighScores() {
-        int sum = 0;
-        for (int i = 0; i < highScore.length; i++) {
-            if (highScore[i][1] != null) {
-                sum++;
-            }
-        }
-        return sum;
-    }
-
     public class Connection implements Runnable {
-
         @Override
         public void run() {
             Socket socket;
@@ -426,7 +328,6 @@ public class Server {
          *
          * @author Samuel Palmhager
          */
-
         @Override
         public void run() {
             while(true) {
@@ -447,7 +348,6 @@ public class Server {
     }
 
     public class UpdatePosition implements Runnable {
-
         @Override
         public void run() {
             while(true) {
