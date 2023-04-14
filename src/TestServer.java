@@ -2,6 +2,9 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
+/**
+ * This is the backup of the Sprint 1 demo :)
+ */
 public class TestServer {
     private int port;
     private Game game = new Game();
