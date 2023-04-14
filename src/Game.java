@@ -17,8 +17,8 @@ public class Game {
         Random r = new Random();
         //int x = r.nextInt(5);
         //int y = r.nextInt(2) + 5;
-        currentPosition = new Point(3, 2);
-        lastPosition = new Point(4, 3);
+        currentPosition = new Point(2, 2);
+        lastPosition = new Point(3, 3);
     }
 
     public Point getLastPosition() {
@@ -64,6 +64,9 @@ public class Game {
     }
 
     public String getCurrentPositionString() {
+        /*if (currentPosition.y == 2) {
+            return currentPosition.x + ",10";
+        }*/
         return currentPosition.x + "," + currentPosition.y;
     }
 
