@@ -1,96 +1,59 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketException;
-import java.util.Timer;
+import java.io.*;
+import java.net.*;
+import java.util.*;
 
 public class TestServer {
     private int port;
     private Game game = new Game();
-    private final long heartbeatInterval = 5000; // 5 seconds
-    private long lastHeartbeatTime;
-    private Thread thread;
 
-    public TestServer(int port) {
+    public TestServer(int port){
         this.port = port;
-        new Thread(new ESConnection()).start();
-        this.lastHeartbeatTime = System.currentTimeMillis();
+        new Thread(new Connection()).start();
     }
 
-    /**
-     * Connects the server to the embedded system and starts the read/write thread.
-     *
-     * @author Samuel Palmhager
-     */
-    public class ESConnection implements Runnable {
+    public class Connection implements Runnable {
         @Override
         public void run() {
-            Socket socket;
+        Socket socket;
             try {
                 ServerSocket serverSocket = new ServerSocket(port);
-                System.out.println("IS-Server startad");
+                System.out.println("Server startad");
                 while (true) {
                     socket = serverSocket.accept();
-                    System.out.println("IS-Klient ansluten");
-                    socket.setSoTimeout(10000);
-                    new Thread(new ESWriter(socket)).start();
-                    thread = new Thread(new ESReader(socket));
-                    thread.start();
+                    System.out.println("Klient ansluten");
+                    ESWriter writer = new ESWriter(socket);
+                    new Thread(writer).start();
+                    new Thread(new ESReader(socket, writer));
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch(IOException e){
+                e.getStackTrace();
             }
         }
     }
-    /**
-     * This class contains the thread which is intended to write to the embedded system
-     *
-     * @author Samuel Palmhager
-     */
+
     public class ESWriter implements Runnable {
         private Socket socket;
         private PrintWriter out;
-        /**
-         * The constructor for the embedded system-writer which establishes a printwriter on the
-         * socket-outputstream.
-         *
-         * @author Samuel Palmhager
-         */
-        public ESWriter(Socket socket) throws SocketException {
+        public ESWriter(Socket socket){
             this.socket = socket;
-                socket.setSoTimeout(10000);
-            try {
-                out = new PrintWriter(socket.getOutputStream(), true);
+            try{
+                out = new PrintWriter(socket.getOutputStream());
+                System.out.println("Writer startad");
             } catch (IOException e) {
-                e.printStackTrace();
-                try {
-                    socket.close();
-                } catch (IOException ex) {
-                    e.printStackTrace();
-                }
+                e.getStackTrace();
             }
         }
-
-        /**
-         * The thread which is intended to write coordinates to the embedded system.
-         *
-         * @author Samuel Palmhager
-         */
         @Override
         public void run() {
             try {
-                while(true) {
+                while (!socket.isClosed()) {
                     Thread.sleep(1000);
-                    game.updatePosition(); //ta bort
-                    String currentPosition = game.getCurrentPositionString();
-                    out.println(currentPosition);
-                    System.out.println(currentPosition);
+                    game.updatePosition();
+                    out.println(game.getCurrentPositionString());
+                    System.out.println("Skickade koordinat: " + game.getCurrentPositionString());
                 }
             } catch (InterruptedException | RuntimeException e) {
-                e.printStackTrace();
+                e.getStackTrace();
                 try {
                     socket.close();
                 } catch (IOException ex) {
@@ -98,24 +61,47 @@ public class TestServer {
                 }
             }
         }
+
+        public void closeSocket() {
+            System.out.println("I closeSocket-metod");
+            try {
+                socket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
-    /**
-     * This class is meant for reading Strings from the embedded system
-     *
-     * @author Samuel Palmhager
-     */
     public class ESReader implements Runnable {
         private Socket socket;
         private BufferedReader in;
-        /**
-         * Constructor for the embedded system-reader which establishes a bufferedreader.
-         *
-         * @author Samuel Palmhager
-         */
-        public ESReader(Socket socket) {
+        private ESWriter writer;
+        private Timer timer = new Timer();
+        private TimerTask task = new TimerTask() {
+            @Override
+            public void run() {
+                counter++;
+                if (counter >= 5) {
+                    try {
+                        socket.close();
+                        writer.closeSocket();
+                        System.out.println("Stängde socket");
+                        timer.cancel();
+                        System.out.println("Stängde av timer");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        };
+        private int counter = 0;
+
+        public ESReader(Socket socket, ESWriter writer) {
+            timer.schedule(task, 0, 1000);
             this.socket = socket;
+            this.writer = writer;
             try {
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                System.out.println("Reader startad");
             } catch (IOException e) {
                 e.printStackTrace();
                 try {
@@ -125,40 +111,25 @@ public class TestServer {
                 }
             }
         }
-        /**
-         * The thread which is intended to read a String from the embedded system
-         *
-         * @author Samuel Palmhager
-         */
+
         @Override
         public void run() {
             String line;
             try {
-                while(true) {
-                    try {
-                        if (in.ready()) {
-                            line = in.readLine();
-                            if (line.equals("heartbeat")) {
-                                lastHeartbeatTime = System.currentTimeMillis();
-                            }
-                            System.out.println("Läste sträng: " + line);
-                            if (System.currentTimeMillis() - lastHeartbeatTime > heartbeatInterval) {
-                                System.out.println("Timer har gått ut");
-                                Thread.sleep(3000);
-                                try {
-                                    System.out.println("Stänger socket");
-                                    socket.close();
-                                } catch (Exception e) {
-                                    throw new RuntimeException(e);
-                                }
-                            }
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                while(!socket.isClosed()) {
+                    line = in.readLine();
+                    if (line.equals("heartbeat")) {
+                        counter = 0;
                     }
+                    System.out.println("Läste sträng: " + line);
                 }
-            } catch (Exception e) {
+            } catch (IOException | RuntimeException e) {
                 e.printStackTrace();
+                try {
+                    socket.close();
+                } catch (IOException ex) {
+                    e.printStackTrace();
+                }
             }
         }
     }
