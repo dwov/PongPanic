@@ -1,2 +1,5 @@
-Test1 20
-Test2 15
+Samuel 30
+Berit 25
+Ingvar 20
+Klas-Ove 15
+Trulls 10

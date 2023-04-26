@@ -8,28 +8,25 @@ public class TestSprintServer {
     private int ESPort;
     private int androidPort;
     private Game game = new Game();
-    private String[][] highScore = new String[10][2];
+    private HighScore highScore = new HighScore();
     private Buffer<String> stringBuffer = new Buffer<>();
+    private Buffer<Object> objectBuffer = new Buffer<>();
     private Thread gameThread;
     private Thread ESWriterThread;
     private Thread ESReaderThread;
     private Thread androidWriterThread;
     private Thread androidReaderThread;
     private Object lock = new Object();
+    int startCount = 0;
+    int nameCount = 0;
 
     public TestSprintServer(int ESPort, int androidPort){
         this.ESPort = ESPort;
         this.androidPort = androidPort;
-        new Thread(new ESConnection()).start();
 
-        highScore[0][0] = "Test1";
-        highScore[0][1] = "25";
-        highScore[1][0] = "Test2";
-        highScore[1][1] = "20";
-        highScore[2][0] = "Test3";
-        highScore[2][1] = "15";
+        //new Thread(new ESConnection()).start();
 
-        //new Thread(new AndroidConnection()).start();
+        new Thread(new AndroidConnection()).start();
     }
 
     public class ESConnection implements Runnable {
@@ -43,9 +40,6 @@ public class TestSprintServer {
                 while (true) {
                     socket = serverSocket.accept();
                     System.out.println("Klient ansluten: " + socket.getInetAddress());
-
-                    /*gameThread = new Thread(new GameThread());
-                    gameThread.start();*/
 
                     ESReaderThread = new Thread(new ESReader(socket));
                     ESReaderThread.start();
@@ -154,7 +148,17 @@ public class TestSprintServer {
                             //stringBuffer.put(game.getCurrentPositionString());
                             stringBuffer.put(game.getCurrentPositionString());
                             System.out.println(array[1]);
+                            if (game.getCurrentPosition().y == 0) {
+                                objectBuffer.put(game.getP1());
+                            } else {
+                                objectBuffer.put(game.getP2());
+                            }
                         } else {
+                            if (game.getCurrentPosition().y == 0) {
+
+                            } else {
+
+                            }
 
                         }
                     }
@@ -179,7 +183,8 @@ public class TestSprintServer {
         public void run() {
             try {
                 while(!gameThread.isInterrupted()) {
-                    Thread.sleep(1000);
+                    int delay = game.getDelay();
+                    Thread.sleep(delay);
                     game.updatePosition();
                     if (game.getCurrentPosition().y == 0 || game.getCurrentPosition().y == 9) {
                         game.setAtEnd(true);
@@ -241,13 +246,16 @@ public class TestSprintServer {
         @Override
         public void run() {
             try {
-                try {
-                    oos.writeObject(highScore);
-                    System.out.println("Skrev lista till app");
-                } catch (SocketException e) {
-                    oos.close();
-                    socket.close();
-                    System.out.println("stängde oos och socket");
+                while (true) {
+                    try {
+                        oos.writeObject(objectBuffer.get());
+                    } catch (SocketException e) {
+                        oos.close();
+                        socket.close();
+                        System.out.println("stängde oos och socket");
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -281,27 +289,41 @@ public class TestSprintServer {
         @Override
         public void run() {
             String inputLine;
-            int startCount = 0;
             while(!androidReaderThread.isInterrupted()) {
                 try {
                     inputLine = (String) ois.readObject();
                     if (inputLine.equals("start")) {
                         startCount++;
                         System.out.println(startCount + " start mottaget");
+                        if (startCount == 1) {
+                            game.getP1().setPlayerNumber(startCount);
+                            objectBuffer.put(game.getP1());
+                            System.out.println("Skickade player 1");
+                        } else if (startCount == 2) {
+                            game.getP2().setPlayerNumber(startCount);
+                            objectBuffer.put(game.getP2());
+                            System.out.println("Skickade player 2");
+                        }
                         if (startCount == 2) {
                             System.out.println("Start om 5 sekunder");
                             Thread.sleep(5000);
+                            objectBuffer.put("start");
+                            System.out.println("Skickade start");
+                            System.out.println("GameThread startad");
                             gameThread = new Thread(new GameThread());
                             gameThread.start();
                             startCount = 0;
                         }
                     } else {
-                        if (startCount == 0) {
+                        nameCount++;
+                        System.out.println(nameCount + " namn mottaget");
+                        if (nameCount == 1) {
                             game.getP1().setName(inputLine);
                             System.out.println("Player 1: " + inputLine);
-                        } else if (startCount == 1) {
+                        } else if (nameCount == 2) {
                             game.getP2().setName(inputLine);
                             System.out.println("Player 2: " + inputLine);
+                            nameCount = 0;
                         }
                     }
                 } catch (IOException e) {

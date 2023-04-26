@@ -1,4 +1,5 @@
-import javax.swing.*;
+import Shared.Player;
+
 import java.awt.*;
 import java.util.*;
 
@@ -8,6 +9,8 @@ public class Game {
     private Player p1 = new Player();
     private Player p2 = new Player();
     private boolean atEnd;
+    private int delay;
+    private int bounceCounter;
 
     public Game() {
         restartGame();
@@ -22,6 +25,8 @@ public class Game {
         lastPosition = new Point(1, 1);
         p1.resetPoints();
         p2.resetPoints();
+        delay = 1000;
+        bounceCounter = 0;
     }
 
     public Point getCurrentPosition() {
@@ -70,12 +75,16 @@ public class Game {
         } else if (millis <= 300) {
             setAtEnd(false);
             bounceUp();
-        } else if (millis <= 500 ) {
+        } else if (millis <= 500) {
             setAtEnd(false);
             bounceRight();
         } else {
             setAtEnd(true);
             return false;
+        }
+        bounceCounter++;
+        if (bounceCounter % 10 == 0) {
+            delay/=2;
         }
         updatePosition();
         return true;
@@ -84,24 +93,30 @@ public class Game {
     private void bounceUp() {
         if (currentPosition.y == 9) {
             setLastPosition(new Point(currentPosition.x, currentPosition.y+1));
+            p2.increasePoints();
         } else if (currentPosition.y == 0) {
             setLastPosition(new Point(currentPosition.x, currentPosition.y-1));
+            p1.increasePoints();
         }
     }
 
     private void bounceLeft() {
         if(currentPosition.y == 9){
             setLastPosition(new Point(currentPosition.x+1, currentPosition.y+1));
+            p2.increasePoints();
         } else if(currentPosition.y == 0){
             setLastPosition(new Point(currentPosition.x-1, currentPosition.y-1));
+            p1.increasePoints();
         }
     }
 
     private void bounceRight() {
         if (currentPosition.y == 9) {
             setLastPosition(new Point(currentPosition.x - 1, currentPosition.y + 1));
+            p2.increasePoints();
         } else if (currentPosition.y == 0) {
             setLastPosition(new Point(currentPosition.x + 1, currentPosition.y - 1));
+            p1.increasePoints();
         }
     }
 
@@ -124,5 +139,9 @@ public class Game {
     public void setAtEnd(boolean atEnd) {
         this.atEnd = atEnd;
         System.out.println("atEnd blir " + atEnd);
+    }
+
+    public int getDelay() {
+        return delay;
     }
 }

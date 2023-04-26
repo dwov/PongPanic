@@ -1,7 +1,12 @@
-public class Player {
+package Shared;
+
+import java.io.Serializable;
+
+public class Player implements Serializable {
     private String name;
     private int points;
     private int playerNumber;
+    private static final long serialVersionUID = 1234L;
 
     public Player() {
         resetPoints();
@@ -26,15 +31,13 @@ public class Player {
     public int getPlayerNumber() {
         return playerNumber;
     }
-
     public void setPlayerNumber(int playerNumber) {
         this.playerNumber = playerNumber;
     }
-
-    public void increasePoints5() {
-        points+=5;
+    public void setPoints(int points) {
+        this.points = points;
     }
-    public void increasePoints10() {
-        points+=10;
+    public void increasePoints() {
+        points++;
     }
 }
