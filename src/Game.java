@@ -1,3 +1,4 @@
+import javax.swing.*;
 import java.awt.*;
 import java.util.*;
 
@@ -18,11 +19,9 @@ public class Game {
         //int x = r.nextInt(5);
         //int y = r.nextInt(2) + 5;
         currentPosition = new Point(2, 2);
-        lastPosition = new Point(3, 3);
-    }
-
-    public Point getLastPosition() {
-        return lastPosition;
+        lastPosition = new Point(1, 1);
+        p1.resetPoints();
+        p2.resetPoints();
     }
 
     public Point getCurrentPosition() {
@@ -30,8 +29,11 @@ public class Game {
     }
 
     private void setCurrentPosition(Point current) {
-        lastPosition = this.currentPosition;
-        this.currentPosition = current;
+        currentPosition = current;
+    }
+
+    private void setLastPosition(Point last) {
+        lastPosition = last;
     }
 
     public void updatePosition() {
@@ -39,9 +41,9 @@ public class Game {
         int cy = currentPosition.y;
         int lx = lastPosition.x;
         int cx = currentPosition.x;
-        if ((ly < cy && cy<9) | cy == 0) {
+        if ((ly < cy && cy < 9) || cy == 0) {
             cy++;
-        } else if((cy < ly && cy>0) | cy == 9) {
+        } else if ((cy < ly && cy > 0) || cy == 9) {
             cy--;
         }
         if (lx < cx) {
@@ -57,16 +59,53 @@ public class Game {
                 cx--;
             }
         }
+        setLastPosition(currentPosition);
         setCurrentPosition(new Point(cx, cy));
-        if (cy == 0 || cy == 9) {
-            atEnd = true;
+    }
+
+    public boolean bounce(int millis) {
+        if (millis < 200) {
+            setAtEnd(false);
+            bounceLeft();
+        } else if (millis <= 300) {
+            setAtEnd(false);
+            bounceUp();
+        } else if (millis <= 500 ) {
+            setAtEnd(false);
+            bounceRight();
+        } else {
+            setAtEnd(true);
+            return false;
+        }
+        updatePosition();
+        return true;
+    }
+
+    private void bounceUp() {
+        if (currentPosition.y == 9) {
+            setLastPosition(new Point(currentPosition.x, currentPosition.y+1));
+        } else if (currentPosition.y == 0) {
+            setLastPosition(new Point(currentPosition.x, currentPosition.y-1));
+        }
+    }
+
+    private void bounceLeft() {
+        if(currentPosition.y == 9){
+            setLastPosition(new Point(currentPosition.x+1, currentPosition.y+1));
+        } else if(currentPosition.y == 0){
+            setLastPosition(new Point(currentPosition.x-1, currentPosition.y-1));
+        }
+    }
+
+    private void bounceRight() {
+        if (currentPosition.y == 9) {
+            setLastPosition(new Point(currentPosition.x - 1, currentPosition.y + 1));
+        } else if (currentPosition.y == 0) {
+            setLastPosition(new Point(currentPosition.x + 1, currentPosition.y - 1));
         }
     }
 
     public String getCurrentPositionString() {
-        /*if (currentPosition.y == 2) {
-            return currentPosition.x + ",10";
-        }*/
         return currentPosition.x + "," + currentPosition.y;
     }
 
@@ -84,35 +123,6 @@ public class Game {
 
     public void setAtEnd(boolean atEnd) {
         this.atEnd = atEnd;
+        System.out.println("atEnd blir " + atEnd);
     }
-
-    public void updatePosition2() {
-        int ly = lastPosition.y;
-        int cy = currentPosition.y;
-        int lx = lastPosition.x;
-        int cx = currentPosition.x;
-        if ((ly < cy && cy<4) | cy == 0) {
-            cy++;
-        } else if((cy < ly && cy>0) | cy == 4) {
-            cy--;
-        }
-        if (lx < cx) {
-            if (cx == 4) {
-                cx--;
-            } else {
-                cx++;
-            }
-        } else if (lx > cx) {
-            if (cx == 0) {
-                cx++;
-            } else {
-                cx--;
-            }
-        }
-        setCurrentPosition(new Point(cx, cy));
-        if (cy == 0 || cy == 4) {
-            atEnd = true;
-        }
-    }
-
 }

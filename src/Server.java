@@ -6,13 +6,20 @@ public class Server {
     private int androidPort;
     private Game game = new Game();
     private String line;
+    private String[][] highScore = new String[10][2];
 
     public Server(int ISPort, int androidPort) {
         this.ISPort = ISPort;
         this.androidPort = androidPort;
         //new Thread(new Connection()).start();
-        new Thread(new UpdatePosition()).start();
-        new Thread(new ESConnection()).start();
+        highScore[0][0] = "Test1";
+        highScore[0][1] = "25";
+        highScore[1][0] = "Test2";
+        highScore[1][1] = "20";
+        highScore[2][0] = "Test3";
+        highScore[2][1] = "15";
+        //new Thread(new UpdatePosition()).start();
+        //new Thread(new ESConnection()).start();
         new Thread(new AndroidConnection()).start();
     }
 
@@ -208,11 +215,11 @@ public class Server {
 
         @Override
         public void run() {
-            while(true) {
+            //while(true) {
                 try {
                     Thread.sleep(1000);
-                    oos.writeObject("Server skriver till app");
-                    System.out.println("Skrev objekt till app");
+                    oos.writeObject(highScore);
+                    System.out.println("Skrev lista till app");
                 } catch (IOException | InterruptedException e) {
                     e.printStackTrace();
                     try {
@@ -221,7 +228,7 @@ public class Server {
                         e.printStackTrace();
                     }
                 }
-            }
+            //}
         }
     }
 
@@ -262,6 +269,7 @@ public class Server {
             String name;
             while(true) {
                 try {
+                    Thread.sleep(1000);
                     name = (String) ois.readObject();
                     System.out.println("Player 1: " + name);
                     /*game.getP1().setName(name);
@@ -274,8 +282,10 @@ public class Server {
                     try {
                         socket.close();
                     } catch (IOException ex) {
-                        e.printStackTrace();
+                        ex.printStackTrace();
                     }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
             }
         }

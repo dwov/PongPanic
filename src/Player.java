@@ -1,6 +1,7 @@
 public class Player {
     private String name;
     private int points;
+    private int playerNumber;
 
     public Player() {
         resetPoints();
@@ -22,7 +23,18 @@ public class Player {
         points = 0;
     }
 
-    public void increasePoints() {
-        points++;
+    public int getPlayerNumber() {
+        return playerNumber;
+    }
+
+    public void setPlayerNumber(int playerNumber) {
+        this.playerNumber = playerNumber;
+    }
+
+    public void increasePoints5() {
+        points+=5;
+    }
+    public void increasePoints10() {
+        points+=10;
     }
 }

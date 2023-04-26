@@ -1,14 +1,24 @@
 import java.io.*;
-import java.net.*;
-import java.util.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
+import java.util.Timer;
+import java.util.TimerTask;
 
-public class TestServer {
+public class TestServer3 {
     private int port;
     private Game game = new Game();
+    private final Object lock = new Object();
 
-    public TestServer(int port){
+    public TestServer3(int port){
         this.port = port;
         new Thread(new Connection()).start();
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        new Thread(new UpdatePosition()).start();
     }
 
     public class Connection implements Runnable {
@@ -48,12 +58,12 @@ public class TestServer {
 
     public class ESWriter implements Runnable {
         private Socket socket;
-        private PrintWriter out;
+        private ObjectOutputStream oos;
         private volatile boolean isRunning = true;
         public ESWriter(Socket socket){
             this.socket = socket;
             try{
-                out = new PrintWriter(socket.getOutputStream(), true);
+                oos = new ObjectOutputStream(socket.getOutputStream());
             } catch (IOException e) {
                 e.getStackTrace();
             }
@@ -62,21 +72,32 @@ public class TestServer {
         public void run() {
             try {
                 while (isRunning) {
-                    Thread.sleep(1000); // wait for 1 second
-                    game.updatePosition();
+                    Thread.sleep(1000);
                     String currentPositionString = game.getCurrentPositionString();
                     if (!socket.isClosed()) {
-                        out.println(currentPositionString);
+                        oos.writeObject(currentPositionString);
                         System.out.println("Skrev koordinat: " + currentPositionString);
                     } else {
                         isRunning = false;
                         System.out.println("Writer : STOP OCH BELÄGG");
                     }
+                    synchronized (lock) {
+                        while (game.isAtEnd()) {
+                            lock.wait();
+                        }
+                    }
+                    System.out.println("Start igen (writer)");
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             } finally {
-                out.close();
+                try {
+                    oos.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
                 try {
                     socket.close();
                 } catch (IOException e) {
@@ -88,14 +109,13 @@ public class TestServer {
 
     public class ESReader implements Runnable {
         private Socket socket;
-        private BufferedReader in;
-        private java.util.Timer timer = new java.util.Timer();
+        private ObjectInputStream ois;
         private volatile boolean isRunning = true;
 
         public ESReader(Socket socket) {
             this.socket = socket;
             try {
-                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                ois = new ObjectInputStream(socket.getInputStream());
             } catch (IOException e) {
                 e.printStackTrace();
                 try {
@@ -109,29 +129,25 @@ public class TestServer {
         @Override
         public void run() {
             try {
-                String inputLine;
+                String inputLine = "";
                 while (isRunning) {
                     try {
-                        inputLine = in.readLine();
+                        inputLine = (String) ois.readObject();
                     } catch (SocketException e) {
                         isRunning = false;
                         System.out.println("Reader : STOPP OCH BELÄGG");
                         break;
+                    } catch (ClassNotFoundException e) {
+                        e.printStackTrace();
                     }
-                    if (inputLine.equals("heartbeat")) {
-                        System.out.println("Läste heartbeat: " + inputLine);
-                        timer.cancel();
-                        timer = new java.util.Timer();
-                        timer.schedule(new TimerTask() {
-                            @Override
-                            public void run() {
-                                try {
-                                    socket.close();
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        }, 5000);
+                    if (inputLine.equals("bounce")) {
+                        game.setAtEnd(false);
+                        System.out.println("BOUNCE");
+                    }
+                    synchronized (lock) {
+                        if (!game.isAtEnd()) {
+                            lock.notifyAll();
+                        }
                     }
                 }
             } catch (IOException e) {
@@ -143,11 +159,37 @@ public class TestServer {
                 }
             } finally {
                 try {
-                    in.close();
+                    ois.close();
                     socket.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+            }
+        }
+    }
+    public class UpdatePosition implements Runnable {
+        @Override
+        public void run() {
+            while(true) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                game.updatePosition();
+                if (game.getCurrentPosition().y == 0 || game.getCurrentPosition().y == 9) {
+                    game.setAtEnd(true);
+                }
+                synchronized (lock) {
+                    while (game.isAtEnd()) {
+                        try {
+                            lock.wait();
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+                System.out.println("Start igen (UpdatePosition)");
             }
         }
     }
