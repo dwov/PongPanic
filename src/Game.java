@@ -21,10 +21,12 @@ public class Game {
         Random r = new Random();
         //int x = r.nextInt(5);
         //int y = r.nextInt(2) + 5;
-        currentPosition = new Point(2, 2);
-        lastPosition = new Point(1, 1);
+        currentPosition = new Point(3, 3);
+        lastPosition = new Point(4, 4);
         p1.resetPoints();
         p2.resetPoints();
+        p1.setWinner(false);
+        p2.setWinner(false);
         delay = 1000;
         bounceCounter = 0;
     }
@@ -66,16 +68,19 @@ public class Game {
         }
         setLastPosition(currentPosition);
         setCurrentPosition(new Point(cx, cy));
+        if (currentPosition.y == 0 || currentPosition.y == 9) {
+            setAtEnd(true);
+        }
     }
 
     public boolean bounce(int millis) {
-        if (millis < 200) {
+        if (millis < ((delay/5)*2)) {
             setAtEnd(false);
             bounceLeft();
-        } else if (millis <= 300) {
+        } else if (millis <= ((delay/5)*3)) {
             setAtEnd(false);
             bounceUp();
-        } else if (millis <= 500) {
+        } else if (millis <= delay) {
             setAtEnd(false);
             bounceRight();
         } else {

@@ -102,4 +102,7 @@ public class HighScore {
         }
         sortHighScoreList();
     }
+    public String[][] getHighScore() {
+        return highScore;
+    }
 }

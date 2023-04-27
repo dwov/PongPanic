@@ -7,6 +7,7 @@ public class Player implements Serializable {
     private int points;
     private int playerNumber;
     private static final long serialVersionUID = 1234L;
+    private boolean winner = false;
 
     public Player() {
         resetPoints();
@@ -39,5 +40,13 @@ public class Player implements Serializable {
     }
     public void increasePoints() {
         points++;
+    }
+
+    public boolean isWinner() {
+        return winner;
+    }
+
+    public void setWinner(boolean winner) {
+        this.winner = winner;
     }
 }
