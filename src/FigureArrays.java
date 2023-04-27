@@ -1,4 +1,4 @@
-public class numberArrays {
+public class FigureArrays {
 
     private String[] player1number0 = new String[12];
     private String[] player2number0 = new String[12];
@@ -24,7 +24,7 @@ public class numberArrays {
 
 
 
-    public numberArrays(){
+    public FigureArrays(){
         init();
     }
 

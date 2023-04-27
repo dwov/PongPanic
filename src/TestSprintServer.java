@@ -19,16 +19,16 @@ public class TestSprintServer {
     private Object lock = new Object();
     int startCount = 0;
     int nameCount = 0;
+    private Thread numberSenderThread;
+    private FigureArrays FigureArrays = new FigureArrays();
 
     public TestSprintServer(int ESPort, int androidPort){
         this.ESPort = ESPort;
         this.androidPort = androidPort;
 
         new Thread(new ESConnection()).start();
-        gameThread = new Thread(new GameThread());
-        gameThread.start();
 
-        //new Thread(new AndroidConnection()).start();
+        new Thread(new AndroidConnection()).start();
     }
 
     public class ESConnection implements Runnable {
@@ -48,6 +48,9 @@ public class TestSprintServer {
 
                     ESWriterThread = new Thread(new ESWriter(socket));
                     ESWriterThread.start();
+
+                    numberSenderThread = new Thread(new numberSender());
+
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -143,33 +146,25 @@ public class TestSprintServer {
                                 }
                             }
                         }, 5000);
-                    } else if (inputLine.startsWith("timer")) {         //Har tagit emot en tajmad knapptryckning
+                    } else if (inputLine.startsWith("timer")) {
                         String[] array = inputLine.split(":");
                         boolean ballCaught = game.bounce(Integer.parseInt(array[1]));
-                        System.out.println(array[1]);
-                        System.out.println(game.getP1().getPoints());
-                        if (ballCaught) {                               //Om knappen är tryckt i tid
+                        if (ballCaught) {
                             //stringBuffer.put(game.getCurrentPositionString());
                             stringBuffer.put(game.getCurrentPositionString());
                             System.out.println(array[1]);
-                            if (game.getCurrentPosition().y == 0) {     //Om det va spelare 1 som tryckte
-                                objectBuffer.put(game.getP1());
-                                System.out.println("Skickade player 1");
-                            } else {                                    //Om det va spelare 2 som tryckte
-                                objectBuffer.put(game.getP2());
-                                System.out.println("Skickade player 2");
-                            }
-                        } else {                                        //Om knappen inte är tryckt i tid
-                            gameThread.interrupt();                     //Sluta skicka koordinater
-                            System.out.println("GameThread interrupted");
                             if (game.getCurrentPosition().y == 0) {
-                                game.getP2().setWinner(true);
-                                objectBuffer.put(game.getP2());         //Skicka spelare 2 om den vann
+                                objectBuffer.put(game.getP1());
                             } else {
-                                game.getP1().setWinner(true);
-                                objectBuffer.put(game.getP1());         //Skicka spelare 1 om den vann
+                                objectBuffer.put(game.getP2());
                             }
-                            System.out.println("Skickade vinnare");
+                        } else {
+                            if (game.getCurrentPosition().y == 0) {
+
+                            } else {
+
+                            }
+
                         }
                     }
                     synchronized (lock) {
@@ -194,9 +189,11 @@ public class TestSprintServer {
             try {
                 while(!gameThread.isInterrupted()) {
                     int delay = game.getDelay();
-                    System.out.println("Nuvarande delay: " + delay);
                     Thread.sleep(delay);
                     game.updatePosition();
+                    if (game.getCurrentPosition().y == 0 || game.getCurrentPosition().y == 9) {
+                        game.setAtEnd(true);
+                    }
                     stringBuffer.put(game.getCurrentPositionString());
                     synchronized (lock) {
                         while (game.isAtEnd()) {
@@ -226,7 +223,6 @@ public class TestSprintServer {
                     androidReaderThread.start();
                     androidWriterThread = new Thread(new AndroidWriter(socket));
                     androidWriterThread.start();
-                    objectBuffer.put(highScore.getHighScore());
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -301,43 +297,44 @@ public class TestSprintServer {
             while(!androidReaderThread.isInterrupted()) {
                 try {
                     inputLine = (String) ois.readObject();
-                    if (inputLine.equals("start")) {                //Startknapp har tryckts
+                    if (inputLine.equals("start")) {
                         startCount++;
                         System.out.println(startCount + " start mottaget");
-                        if (startCount == 1) {                      //En klient har klickat start
+                        if (startCount == 1) {
                             game.getP1().setPlayerNumber(startCount);
                             objectBuffer.put(game.getP1());
                             System.out.println("Skickade player 1");
-                        } else if (startCount == 2) {               //Två klienter har klickat start
+                        } else if (startCount == 2) {
                             game.getP2().setPlayerNumber(startCount);
                             objectBuffer.put(game.getP2());
                             System.out.println("Skickade player 2");
+                        }
+                        if (startCount == 2) {
                             System.out.println("Start om 5 sekunder");
-                            Thread.sleep(5000);               //Vänta 5 sekunder innan start av spel
-                            objectBuffer.put("start");
+                            Thread.sleep(5000);
                             objectBuffer.put("start");
                             System.out.println("Skickade start");
-                            gameThread = new Thread(new GameThread());
-                            gameThread.start();                     //Börja skicka koordinater
                             System.out.println("GameThread startad");
-                            //startCount = 0;
+                            numberSenderThread.start();
+                            Thread.sleep(10000);
+                            gameThread = new Thread(new GameThread());
+                            gameThread.start();
+                            startCount = 0;
                         }
                     } else {
                         nameCount++;
                         System.out.println(nameCount + " namn mottaget");
-                        if (nameCount == 1) {                       //Ett namn mottaget
+                        if (nameCount == 1) {
                             game.getP1().setName(inputLine);
                             System.out.println("Player 1: " + inputLine);
-                        } else if (nameCount == 2) {                //Två namn mottagna
+                        } else if (nameCount == 2) {
                             game.getP2().setName(inputLine);
                             System.out.println("Player 2: " + inputLine);
-                            //nameCount = 0;
+                            nameCount = 0;
                         }
                     }
                 } catch (IOException e) {
                     System.out.println("readObject interrupted");
-                    startCount = 0;
-                    nameCount = 0;
                     try {
                         androidWriterThread.interrupt();
                         androidReaderThread.interrupt();
@@ -355,5 +352,73 @@ public class TestSprintServer {
                 }
             }
         }
+    }
+
+    public class numberSender implements Runnable{
+
+        @Override
+        public void run() {
+            try{
+                //nummer 9
+                sendNumber(FigureArrays.getPlayer1number9());
+                sendNumber(FigureArrays.getPlayer2number9());
+                Thread.sleep(1000);
+
+                //nummer 8
+                sendNumber(FigureArrays.getPlayer1number8());
+                sendNumber(FigureArrays.getPlayer2number8());
+                Thread.sleep(1000);
+
+                //nummer 7
+                sendNumber(FigureArrays.getPlayer1number7());
+                sendNumber(FigureArrays.getPlayer2number7());
+                Thread.sleep(1000);
+
+                //nummer 6
+                sendNumber(FigureArrays.getPlayer1number6());
+                sendNumber(FigureArrays.getPlayer2number6());
+                Thread.sleep(1000);
+
+                //nummer 5
+                sendNumber(FigureArrays.getPlayer1number5());
+                sendNumber(FigureArrays.getPlayer2number5());
+                Thread.sleep(1000);
+
+                //nummer 4
+                sendNumber(FigureArrays.getPlayer1number4());
+                sendNumber(FigureArrays.getPlayer2number4());
+                Thread.sleep(1000);
+
+                //nummer 3
+                sendNumber(FigureArrays.getPlayer1number3());
+                sendNumber(FigureArrays.getPlayer2number3());
+                Thread.sleep(1000);
+
+                //nummer 2
+                sendNumber(FigureArrays.getPlayer1number2());
+                sendNumber(FigureArrays.getPlayer2number2());
+                Thread.sleep(1000);
+
+                //nummer 1
+                sendNumber(FigureArrays.getPlayer1number1());
+                sendNumber(FigureArrays.getPlayer2number1());
+                Thread.sleep(1000);
+
+                //nummer 0
+                sendNumber(FigureArrays.getPlayer1number0());
+                sendNumber(FigureArrays.getPlayer2number0());
+                Thread.sleep(1000);
+
+            } catch(InterruptedException e){
+                e.printStackTrace();
+            }
+
+        }
+        public void sendNumber(String[] list){
+            for (int i = 0; i <list.length; i++) {
+                stringBuffer.put(list[i]);
+            }
+        }
+
     }
 }
