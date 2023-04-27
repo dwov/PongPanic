@@ -48,9 +48,6 @@ public class TestSprintServer {
 
                     ESWriterThread = new Thread(new ESWriter(socket));
                     ESWriterThread.start();
-
-                    numberSenderThread = new Thread(new numberSender());
-
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -155,16 +152,27 @@ public class TestSprintServer {
                             System.out.println(array[1]);
                             if (game.getCurrentPosition().y == 0) {
                                 objectBuffer.put(game.getP1());
+                                System.out.println("Skickade player 1");
                             } else {
                                 objectBuffer.put(game.getP2());
+                                System.out.println("Skickade player 1");
                             }
                         } else {
+                            String[][] score = new String[1][1];
                             if (game.getCurrentPosition().y == 0) {
-
+                                game.getP2().setWinner(true);
+                                objectBuffer.put(game.getP2());
+                                score[0][0] = game.getP2().getName();
+                                score[0][1] = game.getP2().getPoints() + "";
                             } else {
-
+                                game.getP1().setWinner(true);
+                                objectBuffer.put(game.getP1());
+                                score[0][0] = game.getP1().getName();
+                                score[0][1] = game.getP1().getPoints() + "";
                             }
-
+                            System.out.println("Skickade vinnare");
+                            highScore.writeHighScoreList();
+                            System.out.println("Uppdaterade highscorelista");
                         }
                     }
                     synchronized (lock) {
@@ -189,11 +197,12 @@ public class TestSprintServer {
             try {
                 while(!gameThread.isInterrupted()) {
                     int delay = game.getDelay();
+                    System.out.println("Delay: " + delay);
                     Thread.sleep(delay);
                     game.updatePosition();
-                    if (game.getCurrentPosition().y == 0 || game.getCurrentPosition().y == 9) {
-                        game.setAtEnd(true);
-                    }
+                    //stringBuffer.put("reset");
+                    stringBuffer.put("reset");
+                    //stringBuffer.put(game.getCurrentPositionString());
                     stringBuffer.put(game.getCurrentPositionString());
                     synchronized (lock) {
                         while (game.isAtEnd()) {
@@ -308,18 +317,14 @@ public class TestSprintServer {
                             game.getP2().setPlayerNumber(startCount);
                             objectBuffer.put(game.getP2());
                             System.out.println("Skickade player 2");
-                        }
-                        if (startCount == 2) {
-                            System.out.println("Start om 5 sekunder");
-                            Thread.sleep(5000);
-                            objectBuffer.put("start");
-                            System.out.println("Skickade start");
-                            System.out.println("GameThread startad");
+                            numberSenderThread = new Thread(new numberSender());
                             numberSenderThread.start();
                             Thread.sleep(10000);
+                            objectBuffer.put("start");
+                            System.out.println("Skickade start");
                             gameThread = new Thread(new GameThread());
                             gameThread.start();
-                            startCount = 0;
+                            System.out.println("GameThread startad");
                         }
                     } else {
                         nameCount++;
@@ -330,12 +335,13 @@ public class TestSprintServer {
                         } else if (nameCount == 2) {
                             game.getP2().setName(inputLine);
                             System.out.println("Player 2: " + inputLine);
-                            nameCount = 0;
                         }
                     }
                 } catch (IOException e) {
                     System.out.println("readObject interrupted");
                     try {
+                        startCount = 0;
+                        nameCount = 0;
                         androidWriterThread.interrupt();
                         androidReaderThread.interrupt();
                         System.out.println("trådar interrupted");
@@ -363,62 +369,70 @@ public class TestSprintServer {
                 sendNumber(FigureArrays.getPlayer1number9());
                 sendNumber(FigureArrays.getPlayer2number9());
                 Thread.sleep(1000);
+                stringBuffer.put("reset");
 
                 //nummer 8
                 sendNumber(FigureArrays.getPlayer1number8());
                 sendNumber(FigureArrays.getPlayer2number8());
                 Thread.sleep(1000);
+                stringBuffer.put("reset");
 
                 //nummer 7
                 sendNumber(FigureArrays.getPlayer1number7());
                 sendNumber(FigureArrays.getPlayer2number7());
                 Thread.sleep(1000);
+                stringBuffer.put("reset");
 
                 //nummer 6
                 sendNumber(FigureArrays.getPlayer1number6());
                 sendNumber(FigureArrays.getPlayer2number6());
                 Thread.sleep(1000);
+                stringBuffer.put("reset");
 
                 //nummer 5
                 sendNumber(FigureArrays.getPlayer1number5());
                 sendNumber(FigureArrays.getPlayer2number5());
                 Thread.sleep(1000);
+                stringBuffer.put("reset");
 
                 //nummer 4
                 sendNumber(FigureArrays.getPlayer1number4());
                 sendNumber(FigureArrays.getPlayer2number4());
                 Thread.sleep(1000);
+                stringBuffer.put("reset");
 
                 //nummer 3
                 sendNumber(FigureArrays.getPlayer1number3());
                 sendNumber(FigureArrays.getPlayer2number3());
                 Thread.sleep(1000);
+                stringBuffer.put("reset");
 
                 //nummer 2
                 sendNumber(FigureArrays.getPlayer1number2());
                 sendNumber(FigureArrays.getPlayer2number2());
                 Thread.sleep(1000);
+                stringBuffer.put("reset");
 
                 //nummer 1
                 sendNumber(FigureArrays.getPlayer1number1());
                 sendNumber(FigureArrays.getPlayer2number1());
                 Thread.sleep(1000);
+                stringBuffer.put("reset");
 
                 //nummer 0
                 sendNumber(FigureArrays.getPlayer1number0());
                 sendNumber(FigureArrays.getPlayer2number0());
                 Thread.sleep(1000);
-
+                stringBuffer.put("reset");
             } catch(InterruptedException e){
                 e.printStackTrace();
             }
-
         }
-        public void sendNumber(String[] list){
+
+        private void sendNumber(String[] list){
             for (int i = 0; i <list.length; i++) {
                 stringBuffer.put(list[i]);
             }
         }
-
     }
 }

@@ -22,8 +22,6 @@ public class FigureArrays {
     private String[] player2number9 = new String[9];
 
 
-
-
     public FigureArrays(){
         init();
     }

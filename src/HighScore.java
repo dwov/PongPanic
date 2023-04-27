@@ -41,7 +41,7 @@ public class HighScore {
     /**
      * Reads high score list from file.
      */
-    public void readHighScoreList() {
+    private void readHighScoreList() {
         try {
             File file = new File("src/HighScore.txt");
             highScore = new String[10][2];
