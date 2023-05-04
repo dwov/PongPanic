@@ -8,6 +8,7 @@ public class Timer {
         System.out.println(counter);
         return counter;
     }
+
     public class Counter implements Runnable {
 
         @Override

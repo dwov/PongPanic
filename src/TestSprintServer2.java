@@ -2,15 +2,14 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.LinkedList;
 import java.util.TimerTask;
 
-public class TestSprintServer {
+public class TestSprintServer2 {
     private int ESPort;
     private int androidPort;
     private Game game = new Game();
     private HighScore highScore = new HighScore();
-    private Buffer<String> stringBuffer = new Buffer<>();
-    private Buffer<Object> objectBuffer = new Buffer<>();
     private Thread gameThread;
     private Thread ESWriterThread;
     private Thread ESReaderThread;
@@ -21,12 +20,23 @@ public class TestSprintServer {
     int nameCount = 0;
     private Thread numberSenderThread;
     private FigureArrays figureArrays = new FigureArrays();
+    private LinkedList<ESWriter> esWriters = new LinkedList<>();
+    private LinkedList<AndroidWriter> androidWriters = new LinkedList<>();
 
-    public TestSprintServer(int ESPort, int androidPort){
+    public TestSprintServer2(int ESPort, int androidPort){
         this.ESPort = ESPort;
         this.androidPort = androidPort;
 
         new Thread(new ESConnection()).start();
+
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        gameThread = new Thread(new GameThread());
+        gameThread.start();
 
         //new Thread(new AndroidConnection()).start();
     }
@@ -41,16 +51,15 @@ public class TestSprintServer {
                 System.out.println("Server startad");
                 while (true) {
                     socket = serverSocket.accept();
-                    System.out.println("Klient ansluten: " + socket.getInetAddress());
+                    System.out.println("IS ansluten: " + socket.getInetAddress());
 
                     ESReaderThread = new Thread(new ESReader(socket));
                     ESReaderThread.start();
 
-                    ESWriterThread = new Thread(new ESWriter(socket));
+                    ESWriter esWriter = new ESWriter(socket);
+                    esWriters.add(esWriter);
+                    ESWriterThread = new Thread(esWriter);
                     ESWriterThread.start();
-
-                    gameThread = new Thread(new GameThread());
-                    gameThread.start();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -69,6 +78,7 @@ public class TestSprintServer {
     public class ESWriter implements Runnable {
         private Socket socket;
         private PrintWriter out;
+        private Buffer<String> stringBuffer = new Buffer<>();
         public ESWriter(Socket socket){
             this.socket = socket;
             try{
@@ -87,6 +97,8 @@ public class TestSprintServer {
                 }
             } catch (InterruptedException e) {
                 System.out.println("buffern blev interrupted");
+                esWriters.remove(this);
+                System.out.println("tog bort esWriter");
             } finally {
                 try {
                     out.close();
@@ -96,6 +108,10 @@ public class TestSprintServer {
                     e.printStackTrace();
                 }
             }
+        }
+
+        public synchronized void send(String string) {
+            stringBuffer.put(string);
         }
     }
 
@@ -151,33 +167,44 @@ public class TestSprintServer {
                         boolean ballCaught = game.bounce(Integer.parseInt(array[1]));
                         System.out.println(array[1]);
                         if (ballCaught) {
-                            //stringBuffer.put("reset");
-                            stringBuffer.put("reset");
-                            //stringBuffer.put(game.getCurrentPositionString());
-                            stringBuffer.put(game.getCurrentPositionString());
+                            for (ESWriter esw : esWriters) {
+                                esw.send("reset");
+                            }
+                            for (ESWriter esw : esWriters) {
+                                esw.send(game.getCurrentPositionString());
+                            }
                             if (game.getCurrentPosition().y == 0) {
-                                objectBuffer.put(game.getP1());
+                                for (AndroidWriter aw : androidWriters) {
+                                    aw.send(game.getP1());
+                                }
                                 System.out.println("Skickade player 1");
                             } else {
-                                objectBuffer.put(game.getP2());
-                                System.out.println("Skickade player 1");
+                                for (AndroidWriter aw : androidWriters) {
+                                    aw.send(game.getP2());
+                                }
+                                System.out.println("Skickade player 2");
                             }
                         } else {
-                            /*String[][] score = new String[1][1];
+                            /*String[][] score = new String[1][2];
                             if (game.getCurrentPosition().y == 0) {
                                 game.getP2().setWinner(true);
-                                objectBuffer.put(game.getP2());
+                                for (AndroidWriter aw : androidWriters) {
+                                    aw.send(game.getP2());
+                                }
                                 score[0][0] = game.getP2().getName();
                                 score[0][1] = game.getP2().getPoints() + "";
                             } else {
                                 game.getP1().setWinner(true);
-                                objectBuffer.put(game.getP1());
+                                for (AndroidWriter aw : androidWriters) {
+                                    aw.send(game.getP1());
+                                }
                                 score[0][0] = game.getP1().getName();
                                 score[0][1] = game.getP1().getPoints() + "";
                             }
                             System.out.println("Skickade vinnare");
-                            highScore.writeHighScoreList();
+                            highScore.addHighScore(score);
                             System.out.println("Uppdaterade highscorelista");*/
+                            System.out.println("Slut på spelet");
                         }
                     }
                     synchronized (lock) {
@@ -205,10 +232,12 @@ public class TestSprintServer {
                     System.out.println("Delay: " + delay);
                     Thread.sleep(delay);
                     game.updatePosition();
-                    //stringBuffer.put("reset");
-                    stringBuffer.put("reset");
-                    //stringBuffer.put(game.getCurrentPositionString());
-                    stringBuffer.put(game.getCurrentPositionString());
+                    for (ESWriter esw : esWriters) {
+                        esw.send("reset");
+                    }
+                    for (ESWriter esw : esWriters) {
+                        esw.send(game.getCurrentPositionString());
+                    }
                     synchronized (lock) {
                         while (game.isAtEnd()) {
                             lock.wait();
@@ -233,10 +262,14 @@ public class TestSprintServer {
                 while(true) {
                     socket = serverSocket.accept();
                     System.out.println("Android-klient ansluten");
-                    androidReaderThread = new Thread(new AndroidReader(socket));
-                    androidReaderThread.start();
-                    androidWriterThread = new Thread(new AndroidWriter(socket));
+
+                    AndroidWriter androidWriter = new AndroidWriter(socket);
+                    androidWriters.add(androidWriter);
+                    androidWriterThread = new Thread(androidWriter);
                     androidWriterThread.start();
+
+                    androidReaderThread = new Thread(new AndroidReader(socket, androidWriter));
+                    androidReaderThread.start();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -247,6 +280,7 @@ public class TestSprintServer {
     public class AndroidWriter implements Runnable {
         private Socket socket;
         private ObjectOutputStream oos;
+        private Buffer<Object> objectBuffer = new Buffer<>();
 
         public AndroidWriter(Socket socket) {
             this.socket = socket;
@@ -260,6 +294,7 @@ public class TestSprintServer {
                     e.printStackTrace();
                 }
             }
+            send(highScore.getHighScore());
         }
 
         @Override
@@ -285,14 +320,20 @@ public class TestSprintServer {
                 }
             }
         }
+
+        public void send(Object object) {
+            objectBuffer.put(object);
+        }
     }
 
     public class AndroidReader implements Runnable {
         private Socket socket;
         private ObjectInputStream ois;
+        private AndroidWriter androidWriter;
 
-        public AndroidReader(Socket socket) {
+        public AndroidReader(Socket socket, AndroidWriter androidWriter) {
             this.socket = socket;
+            this.androidWriter = androidWriter;
             try {
                 ois = new ObjectInputStream(socket.getInputStream());
             } catch (IOException e) {
@@ -316,20 +357,23 @@ public class TestSprintServer {
                         System.out.println(startCount + " start mottaget");
                         if (startCount == 1) {
                             game.getP1().setPlayerNumber(startCount);
-                            objectBuffer.put(game.getP1());
+                            for (AndroidWriter aw : androidWriters) {
+                                aw.send(game.getP1());
+                            }
                             System.out.println("Skickade player 1");
                         } else if (startCount == 2) {
                             game.getP2().setPlayerNumber(startCount);
-                            objectBuffer.put(game.getP2());
+                            for (AndroidWriter aw : androidWriters) {
+                                aw.send(game.getP2());
+                            }
                             System.out.println("Skickade player 2");
-                            numberSenderThread = new Thread(new numberSender());
-                            numberSenderThread.start();
-                            Thread.sleep(10000);
-                            objectBuffer.put("start");
+                            /*numberSenderThread = new Thread(new NumberSender());
+                            numberSenderThread.start();*/
+                            for (AndroidWriter aw : androidWriters) {
+                                aw.send("start");
+                            }
                             System.out.println("Skickade start");
-                            gameThread = new Thread(new GameThread());
-                            gameThread.start();
-                            System.out.println("GameThread startad");
+                            startCount = 0;
                         }
                     } else {
                         nameCount++;
@@ -340,13 +384,15 @@ public class TestSprintServer {
                         } else if (nameCount == 2) {
                             game.getP2().setName(inputLine);
                             System.out.println("Player 2: " + inputLine);
+                            nameCount = 0;
                         }
                     }
                 } catch (IOException e) {
                     System.out.println("readObject interrupted");
                     try {
-                        startCount = 0;
-                        nameCount = 0;
+                        androidWriters.remove(androidWriter);
+                        System.out.println("tog bort androidWriter");
+
                         androidWriterThread.interrupt();
                         androidReaderThread.interrupt();
                         System.out.println("trådar interrupted");
@@ -358,14 +404,12 @@ public class TestSprintServer {
                     }
                 } catch (ClassNotFoundException e) {
                     e.printStackTrace();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
                 }
             }
         }
     }
 
-    public class numberSender implements Runnable{
+    public class NumberSender implements Runnable {
 
         @Override
         public void run() {
@@ -374,69 +418,96 @@ public class TestSprintServer {
                 sendNumber(figureArrays.getPlayer1number9());
                 sendNumber(figureArrays.getPlayer2number9());
                 Thread.sleep(1000);
-                stringBuffer.put("reset");
+                for (ESWriter esw : esWriters) {
+                    esw.send("reset");
+                }
 
                 //nummer 8
                 sendNumber(figureArrays.getPlayer1number8());
                 sendNumber(figureArrays.getPlayer2number8());
                 Thread.sleep(1000);
-                stringBuffer.put("reset");
+                for (ESWriter esw : esWriters) {
+                    esw.send("reset");
+                }
 
                 //nummer 7
                 sendNumber(figureArrays.getPlayer1number7());
                 sendNumber(figureArrays.getPlayer2number7());
                 Thread.sleep(1000);
-                stringBuffer.put("reset");
+                for (ESWriter esw : esWriters) {
+                    esw.send("reset");
+                }
 
                 //nummer 6
                 sendNumber(figureArrays.getPlayer1number6());
                 sendNumber(figureArrays.getPlayer2number6());
                 Thread.sleep(1000);
-                stringBuffer.put("reset");
+                for (ESWriter esw : esWriters) {
+                    esw.send("reset");
+                }
 
                 //nummer 5
                 sendNumber(figureArrays.getPlayer1number5());
                 sendNumber(figureArrays.getPlayer2number5());
                 Thread.sleep(1000);
-                stringBuffer.put("reset");
+                for (ESWriter esw : esWriters) {
+                    esw.send("reset");
+                }
 
                 //nummer 4
                 sendNumber(figureArrays.getPlayer1number4());
                 sendNumber(figureArrays.getPlayer2number4());
                 Thread.sleep(1000);
-                stringBuffer.put("reset");
+                for (ESWriter esw : esWriters) {
+                    esw.send("reset");
+                }
 
                 //nummer 3
                 sendNumber(figureArrays.getPlayer1number3());
                 sendNumber(figureArrays.getPlayer2number3());
                 Thread.sleep(1000);
-                stringBuffer.put("reset");
+                for (ESWriter esw : esWriters) {
+                    esw.send("reset");
+                }
 
                 //nummer 2
                 sendNumber(figureArrays.getPlayer1number2());
                 sendNumber(figureArrays.getPlayer2number2());
                 Thread.sleep(1000);
-                stringBuffer.put("reset");
+                for (ESWriter esw : esWriters) {
+                    esw.send("reset");
+                }
 
                 //nummer 1
                 sendNumber(figureArrays.getPlayer1number1());
                 sendNumber(figureArrays.getPlayer2number1());
                 Thread.sleep(1000);
-                stringBuffer.put("reset");
+                for (ESWriter esw : esWriters) {
+                    esw.send("reset");
+                }
 
                 //nummer 0
                 sendNumber(figureArrays.getPlayer1number0());
                 sendNumber(figureArrays.getPlayer2number0());
                 Thread.sleep(1000);
-                stringBuffer.put("reset");
+                for (ESWriter esw : esWriters) {
+                    esw.send("reset");
+                }
+
+                //starta game-tråd
+                gameThread = new Thread(new GameThread());
+                gameThread.start();
+                System.out.println("GameThread startad");
             } catch(InterruptedException e){
                 e.printStackTrace();
             }
         }
 
         private void sendNumber(String[] list){
-            for (int i = 0; i < list.length; i++) {
-                stringBuffer.put(list[i]);
+            for (ESWriter esw : esWriters) {
+                for (int i = 0; i < list.length; i++) {
+                    esw.send(list[i]);
+                }
             }
         }
     }

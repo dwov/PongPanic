@@ -11,7 +11,6 @@ public class Game {
     private boolean atEnd;
     private int delay;
     private int bounceCounter;
-
     public Game() {
         restartGame();
     }
@@ -21,7 +20,7 @@ public class Game {
         Random r = new Random();
         //int x = r.nextInt(5);
         //int y = r.nextInt(2) + 5;
-        currentPosition = new Point(3, 3);
+        currentPosition = new Point(4, 5);
         lastPosition = new Point(4, 4);
         p1.resetPoints();
         p2.resetPoints();
@@ -88,8 +87,8 @@ public class Game {
             return false;
         }
         bounceCounter++;
-        if (bounceCounter % 10 == 0) {
-            delay/=2;
+        if (bounceCounter % 2 == 0) {
+            delay = 9*delay/10;
         }
         updatePosition();
         return true;

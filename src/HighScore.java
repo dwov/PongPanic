@@ -22,7 +22,7 @@ public class HighScore {
     /**
      * Saves high score list to file.
      */
-    public void writeHighScoreList() {
+    private void writeHighScoreList() {
         try {
             FileWriter writer = new FileWriter("src/HighScore.txt");
             for (int i = 0; i < nbrHighScores; i++) {
@@ -70,7 +70,7 @@ public class HighScore {
             swapped = false;
             j++;
             for (int i = 0; i < highScore.length - j; i++) {
-                if (highScore[i][1] != null && highScore[i + 1][1] != null && Integer.parseInt(highScore[i][1]) >= Integer.parseInt(highScore[i + 1][1])) {
+                if (highScore[i][1] != null && highScore[i + 1][1] != null && Integer.parseInt(highScore[i][1]) <= Integer.parseInt(highScore[i + 1][1])) {
                     tempName = highScore[i][0];
                     tempPoints = Integer.parseInt(highScore[i][1]);
                     highScore[i][0] = highScore[i + 1][0];
@@ -96,11 +96,12 @@ public class HighScore {
                 return;
             }
         } else {
-            highScore[nbrHighScores][0] = highScore[0][0];
-            highScore[nbrHighScores][1] = highScore[0][1];
+            highScore[nbrHighScores][0] = score[0][0];
+            highScore[nbrHighScores][1] = score[0][1];
             nbrHighScores++;
         }
         sortHighScoreList();
+        writeHighScoreList();
     }
     public String[][] getHighScore() {
         return highScore;
