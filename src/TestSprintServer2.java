@@ -28,17 +28,16 @@ public class TestSprintServer2 {
         this.androidPort = androidPort;
 
         new Thread(new ESConnection()).start();
-
+        new Thread(new AndroidConnection()).start();
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
-        gameThread = new Thread(new GameThread());
-        gameThread.start();
 
-        //new Thread(new AndroidConnection()).start();
+
+
     }
 
     public class ESConnection implements Runnable {
@@ -372,6 +371,8 @@ public class TestSprintServer2 {
                             for (AndroidWriter aw : androidWriters) {
                                 aw.send("start");
                             }
+                            gameThread = new Thread(new GameThread());
+                            gameThread.start();
                             System.out.println("Skickade start");
                             startCount = 0;
                         }
