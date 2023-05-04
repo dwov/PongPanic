@@ -368,6 +368,11 @@ public class TestSprintServer2 {
                             System.out.println("Skickade player 2");
                             /*numberSenderThread = new Thread(new NumberSender());
                             numberSenderThread.start();*/
+                            try {
+                                Thread.sleep(1000);
+                            } catch(InterruptedException e) {
+                                throw new RuntimeException(e);
+                            }
                             for (AndroidWriter aw : androidWriters) {
                                 aw.send("start");
                             }

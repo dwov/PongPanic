@@ -24,8 +24,8 @@ public class TestServer4 {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-       // new TestClient(game);
-       // new TestClient(game);
+        //new TestClient(game);
+        //new TestClient(game);
     }
 
     public class Connection implements Runnable {
