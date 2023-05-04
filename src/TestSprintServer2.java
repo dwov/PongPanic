@@ -174,12 +174,12 @@ public class TestSprintServer2 {
                             }
                             if (game.getCurrentPosition().y == 0) {
                                 for (AndroidWriter aw : androidWriters) {
-                                    aw.send(game.getP1());
+                                    aw.send(game.getP1().ourToString());
                                 }
                                 System.out.println("Skickade player 1");
                             } else {
                                 for (AndroidWriter aw : androidWriters) {
-                                    aw.send(game.getP2());
+                                    aw.send(game.getP2().ourToString());
                                 }
                                 System.out.println("Skickade player 2");
                             }
@@ -357,13 +357,13 @@ public class TestSprintServer2 {
                         if (startCount == 1) {
                             game.getP1().setPlayerNumber(startCount);
                             for (AndroidWriter aw : androidWriters) {
-                                aw.send(game.getP1());
+                                aw.send(game.getP1().ourToString());
                             }
                             System.out.println("Skickade player 1");
                         } else if (startCount == 2) {
                             game.getP2().setPlayerNumber(startCount);
                             for (AndroidWriter aw : androidWriters) {
-                                aw.send(game.getP2());
+                                aw.send(game.getP2().ourToString());
                             }
                             System.out.println("Skickade player 2");
                             /*numberSenderThread = new Thread(new NumberSender());

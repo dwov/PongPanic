@@ -41,12 +41,17 @@ public class Player implements Serializable {
     public void increasePoints() {
         points++;
     }
-
     public boolean isWinner() {
         return winner;
     }
 
     public void setWinner(boolean winner) {
         this.winner = winner;
+    }
+    public String[] ourToString(){
+        String[] list = new String[2];
+        list[0] = getName();
+        list[1] = String.valueOf(getPoints());
+        return list;
     }
 }
