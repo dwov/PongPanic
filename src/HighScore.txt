@@ -1,5 +1,10 @@
-Samuel 30
-Berit 25
-Ingvar 20
-Klas-Ove 15
-Truls 10
+test2 12
+Mats 11
+Tilde 9
+Arne 9
+Bengt 8
+Britta 7
+test 4
+Kai 4
+Leif 4
+Susanne 4

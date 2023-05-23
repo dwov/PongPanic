@@ -5,7 +5,7 @@ import java.net.SocketException;
 import java.util.LinkedList;
 import java.util.TimerTask;
 
-public class TestSprintServer2 {
+public class TestDemoServer {
     private int ESPort;
     private int androidPort;
     private Game game = new Game();
@@ -16,16 +16,18 @@ public class TestSprintServer2 {
     private Thread androidWriterThread;
     private Thread androidReaderThread;
     private Object lock = new Object();
-    int startCount = 0;
-    int nameCount = 0;
+    private int startCount = 0;
+    private int nameCount = 0;
     private Thread numberSenderThread;
     private FigureArrays figureArrays = new FigureArrays();
     private LinkedList<ESWriter> esWriters = new LinkedList<>();
     private LinkedList<AndroidWriter> androidWriters = new LinkedList<>();
 
-    public TestSprintServer2(int ESPort, int androidPort){
+    public TestDemoServer(int ESPort, int androidPort){
         this.ESPort = ESPort;
         this.androidPort = androidPort;
+
+        gameThread = new Thread(new GameThread());
 
         new Thread(new ESConnection()).start();
         new Thread(new AndroidConnection()).start();
@@ -38,16 +40,17 @@ public class TestSprintServer2 {
             ServerSocket serverSocket = null;
             try {
                 serverSocket = new ServerSocket(ESPort);
-                System.out.println("Server startad");
+                System.out.println("IS-server startad");
                 while (true) {
                     socket = serverSocket.accept();
-                    System.out.println("IS ansluten: " + socket.getInetAddress());
-
-                    ESReaderThread = new Thread(new ESReader(socket));
-                    ESReaderThread.start();
+                    System.out.println("IS-klient ansluten");
 
                     ESWriter esWriter = new ESWriter(socket);
                     esWriters.add(esWriter);
+
+                    ESReaderThread = new Thread(new ESReader(socket, esWriter));
+                    ESReaderThread.start();
+
                     ESWriterThread = new Thread(esWriter);
                     ESWriterThread.start();
                 }
@@ -79,16 +82,24 @@ public class TestSprintServer2 {
         }
         @Override
         public void run() {
+            /*if (esWriters.size() == 2) {
+                for (ESWriter esw : esWriters) {
+                    esw.send("reset");
+                    sendFigure(figureArrays.getPlayer1number1());
+                    sendFigure(figureArrays.getPlayer2number2());
+                }
+            }*/
             try {
                 while (true) {
                     String string = stringBuffer.get();
                     out.println(string);
-                    System.out.println("Skrev koordinat: " + string);
+                    //System.out.println("Skrev koordinat: " + string);
                 }
             } catch (InterruptedException e) {
                 System.out.println("buffern blev interrupted");
                 esWriters.remove(this);
                 System.out.println("tog bort esWriter");
+                System.out.println("IP: " + socket.getInetAddress().getHostAddress());
             } finally {
                 try {
                     out.close();
@@ -99,7 +110,6 @@ public class TestSprintServer2 {
                 }
             }
         }
-
         public synchronized void send(String string) {
             stringBuffer.put(string);
         }
@@ -109,9 +119,11 @@ public class TestSprintServer2 {
         private Socket socket;
         private BufferedReader in;
         private java.util.Timer timer = new java.util.Timer();
+        private ESWriter esWriter;
 
-        public ESReader(Socket socket) {
+        public ESReader(Socket socket, ESWriter esWriter) {
             this.socket = socket;
+            this.esWriter = esWriter;
             try {
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             } catch (IOException e) {
@@ -136,13 +148,14 @@ public class TestSprintServer2 {
                         break;
                     }
                     if (inputLine.equals("heartbeat")) {
-                        System.out.println("Läste heartbeat: " + inputLine);
+                        System.out.println("Läste heartbeat: " + socket.getInetAddress().getHostAddress());
                         timer.cancel();
                         timer = new java.util.Timer();
                         timer.schedule(new TimerTask() {
                             @Override
                             public void run() {
                                 try {
+                                    esWriters.remove(esWriter);
                                     gameThread.interrupt();
                                     ESWriterThread.interrupt();
                                     in.close();
@@ -151,54 +164,73 @@ public class TestSprintServer2 {
                                     e.printStackTrace();
                                 }
                             }
-                        }, 5000);
+                        }, 12000);
                     } else if (inputLine.startsWith("timer")) {
                         String[] array = inputLine.split(":");
-                        boolean ballCaught = game.bounce(Integer.parseInt(array[1]));
-                        System.out.println(array[1]);
-                        if (ballCaught) {
-                            for (ESWriter esw : esWriters) {
-                                esw.send("reset");
-                            }
-                            for (ESWriter esw : esWriters) {
-                                esw.send(game.getCurrentPositionString());
-                            }
-                            if (game.getCurrentPosition().y == 1) {
-                                for (AndroidWriter aw : androidWriters) {
-                                    aw.send(game.getP1().toStringArray());
+                        System.out.println("timer: " + array[1]);
+                        if (game.getCurrentPosition().y == 0 || game.getCurrentPosition().y == 9) {
+                            boolean ballCaught = game.bounce(Integer.parseInt(array[1]));
+                            if (ballCaught) {
+                                for (ESWriter esw : esWriters) {
+                                    esw.send("reset");
                                 }
-                                System.out.println("Skickade player 1");
+                                for (ESWriter esw : esWriters) {
+                                    esw.send(game.getCurrentPositionString());
+                                }
+                                if (game.getCurrentPosition().y == 1) {
+                                    for (AndroidWriter aw : androidWriters) {
+                                        aw.send(game.getP1().toStringArray());
+                                    }
+                                    System.out.println("Skickade player 1");
+                                } else {
+                                    for (AndroidWriter aw : androidWriters) {
+                                        aw.send(game.getP2().toStringArray());
+                                    }
+                                    System.out.println("Skickade player 2");
+                                }
                             } else {
-                                for (AndroidWriter aw : androidWriters) {
-                                    aw.send(game.getP2().toStringArray());
+                                for (ESWriter esw : esWriters) {
+                                    esw.send("reset");
                                 }
-                                System.out.println("Skickade player 2");
-                            }
-                        } else {
-                            for (ESWriter esw : esWriters) {
-                                esw.send("reset");
-                            }
-                            String[][] score = new String[1][2];
-                            if (game.getCurrentPosition().y == 0) {
-                                game.getP2().setWinner(true);
-                                for (AndroidWriter aw : androidWriters) {
-                                    aw.send(game.getP2().toStringArray());
+                                String[][] score = new String[1][2];
+                                if (game.getCurrentPosition().y == 0) {
+                                    game.getP2().setWinner(true);
+                                    sendFigure(figureArrays.getPlayer2happy());
+                                    sendFigure(figureArrays.getPlayer1sad());
+                                    for (AndroidWriter aw : androidWriters) {
+                                        aw.send(game.getP2().toStringArray());
+                                    }
+                                    score[0][0] = game.getP2().getName();
+                                    score[0][1] = game.getP2().getPoints() + "";
+                                } else {
+                                    game.getP1().setWinner(true);
+                                    sendFigure(figureArrays.getPlayer1happy());
+                                    sendFigure(figureArrays.getPlayer2sad());
+                                    for (AndroidWriter aw : androidWriters) {
+                                        aw.send(game.getP1().toStringArray());
+                                    }
+                                    score[0][0] = game.getP1().getName();
+                                    score[0][1] = game.getP1().getPoints() + "";
                                 }
-                                score[0][0] = game.getP2().getName();
-                                score[0][1] = game.getP2().getPoints() + "";
-                            } else {
-                                game.getP1().setWinner(true);
-                                for (AndroidWriter aw : androidWriters) {
-                                    aw.send(game.getP1().toStringArray());
+                                System.out.println("Skickade vinnare");
+                                highScore.addHighScore(score);
+                                System.out.println("Uppdaterade highscorelista");
+                                gameThread.interrupt();
+                                System.out.println("game-tråd interrupted");
+
+                                androidWriters.clear();
+
+                                try {
+                                    Thread.sleep(10000);
+                                } catch (InterruptedException e) {
+                                    throw new RuntimeException(e);
                                 }
-                                score[0][0] = game.getP1().getName();
-                                score[0][1] = game.getP1().getPoints() + "";
+                                for (ESWriter esw : esWriters) {
+                                    esw.send("reset");
+                                }
+                                sendFigure(figureArrays.getPlayer1number1());
+                                sendFigure(figureArrays.getPlayer2number2());
                             }
-                            System.out.println("Skickade vinnare");
-                            highScore.addHighScore(score);
-                            System.out.println("Uppdaterade highscorelista");
-                            gameThread.interrupt();
-                            System.out.println("game-tråd interrupted");
                         }
                     }
                     synchronized (lock) {
@@ -223,7 +255,6 @@ public class TestSprintServer2 {
             try {
                 while(!gameThread.isInterrupted()) {
                     int delay = game.getDelay();
-                    System.out.println("Delay: " + delay);
                     Thread.sleep(delay);
                     game.updatePosition();
                     for (ESWriter esw : esWriters) {
@@ -314,7 +345,6 @@ public class TestSprintServer2 {
                 }
             }
         }
-
         public void send(Object object) {
             objectBuffer.put(object);
         }
@@ -324,6 +354,8 @@ public class TestSprintServer2 {
         private Socket socket;
         private ObjectInputStream ois;
         private AndroidWriter androidWriter;
+        private java.util.Timer timer1 = new java.util.Timer();
+        private java.util.Timer timer2 = new java.util.Timer();
 
         public AndroidReader(Socket socket, AndroidWriter androidWriter) {
             this.socket = socket;
@@ -346,47 +378,67 @@ public class TestSprintServer2 {
             while(!androidReaderThread.isInterrupted()) {
                 try {
                     inputLine = (String) ois.readObject();
-                    if (inputLine.equals("start")) {
+                    if (inputLine.startsWith("start:")) {
+                        System.out.println("Tog emot start");
+                        String[] array = inputLine.split(":");
+                        if (array[1].equals(game.getP1().getName())) {
+                            System.out.println("Player 1: " + inputLine);
+                            for (AndroidWriter aw : androidWriters) {
+                                aw.send(game.getP1().toStringArray());
+                            }
+                            timer1.cancel();
+                            timer1 = new java.util.Timer();
+                            System.out.println("Avslutade timer1");
+                        } else {
+                            System.out.println("Player 2: " + inputLine);
+                            for (AndroidWriter aw : androidWriters) {
+                                aw.send(game.getP2().toStringArray());
+                            }
+                            timer2.cancel();
+                            timer2 = new java.util.Timer();
+                            System.out.println("Avslutade timer2");
+                        }
                         startCount++;
-                        System.out.println(startCount + " start mottaget");
-                        if (startCount == 1) {
-                            game.getP1().setPlayerNumber(startCount);
-                            for (AndroidWriter aw : androidWriters) {
-                                aw.send(game.getP1());
-                            }
-                            System.out.println("Skickade player 1");
-                        } else if (startCount == 2) {
-                            game.getP2().setPlayerNumber(startCount);
-                            for (AndroidWriter aw : androidWriters) {
-                                aw.send(game.getP2());
-                            }
-                            System.out.println("Skickade player 2");
-                            /*numberSenderThread = new Thread(new NumberSender());
-                            numberSenderThread.start();*/
-                            try {
-                                Thread.sleep(1000);
-                            } catch(InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                            for (AndroidWriter aw : androidWriters) {
-                                aw.send("start");
-                            }
-                            System.out.println("Skickade start");
-                            gameThread = new Thread(new GameThread());
-                            gameThread.start();
-                            System.out.println("Startade game-tråd");
+                        if (startCount == 2) {
+                            numberSenderThread = new Thread(new NumberSender());
+                            numberSenderThread.start();
+                            System.out.println("Startade nedräkning");
                             startCount = 0;
                         }
                     } else {
-                        nameCount++;
-                        System.out.println(nameCount + " namn mottaget");
-                        if (nameCount == 1) {
-                            game.getP1().setName(inputLine);
+                        System.out.println("Tog emot namn");
+                        if (game.getP1().getName() == null) {
                             System.out.println("Player 1: " + inputLine);
-                        } else if (nameCount == 2) {
-                            game.getP2().setName(inputLine);
+                            game.getP1().setName(inputLine);
+                            System.out.println("Startar timer");
+                            timer1.cancel();
+                            timer1 = new java.util.Timer();
+                            timer1.schedule(new TimerTask() {
+                                @Override
+                                public void run() {
+                                    for (AndroidWriter aw : androidWriters) {
+                                        aw.send(game.getP1().getName());
+                                    }
+                                    game.getP1().setName(null);
+                                    System.out.println("Timer1 out");
+                                }
+                            }, 10000);
+                        } else {
                             System.out.println("Player 2: " + inputLine);
-                            nameCount = 0;
+                            game.getP2().setName(inputLine);
+                            System.out.println("Startar timer");
+                            timer2.cancel();
+                            timer2 = new java.util.Timer();
+                            timer2.schedule(new TimerTask() {
+                                @Override
+                                public void run() {
+                                    for (AndroidWriter aw : androidWriters) {
+                                        aw.send(game.getP2().getName());
+                                    }
+                                    game.getP2().setName(null);
+                                    System.out.println("Timer2 out");
+                                }
+                            }, 10000);
                         }
                     }
                 } catch (IOException e) {
@@ -394,7 +446,6 @@ public class TestSprintServer2 {
                     try {
                         androidWriters.remove(androidWriter);
                         System.out.println("tog bort androidWriter");
-
                         androidWriterThread.interrupt();
                         androidReaderThread.interrupt();
                         System.out.println("trådar interrupted");
@@ -416,100 +467,108 @@ public class TestSprintServer2 {
         @Override
         public void run() {
             try{
+                //reset
+                for (ESWriter aw : esWriters) {
+                    aw.send("reset");
+                }
+
                 //nummer 9
-                sendNumber(figureArrays.getPlayer1number9());
-                sendNumber(figureArrays.getPlayer2number9());
-                Thread.sleep(1000);
+                sendFigure(figureArrays.getPlayer1number9(), figureArrays.getPlayer2number9());
+                Thread.sleep(1100);
                 for (ESWriter esw : esWriters) {
                     esw.send("reset");
                 }
 
                 //nummer 8
-                sendNumber(figureArrays.getPlayer1number8());
-                sendNumber(figureArrays.getPlayer2number8());
-                Thread.sleep(1000);
+                sendFigure(figureArrays.getPlayer1number8(), figureArrays.getPlayer2number8());
+                Thread.sleep(1100);
                 for (ESWriter esw : esWriters) {
                     esw.send("reset");
                 }
 
                 //nummer 7
-                sendNumber(figureArrays.getPlayer1number7());
-                sendNumber(figureArrays.getPlayer2number7());
-                Thread.sleep(1000);
+                sendFigure(figureArrays.getPlayer1number7(), figureArrays.getPlayer2number7());
+                Thread.sleep(1100);
                 for (ESWriter esw : esWriters) {
                     esw.send("reset");
                 }
 
                 //nummer 6
-                sendNumber(figureArrays.getPlayer1number6());
-                sendNumber(figureArrays.getPlayer2number6());
-                Thread.sleep(1000);
+                sendFigure(figureArrays.getPlayer1number6(), figureArrays.getPlayer2number6());
+                Thread.sleep(1100);
                 for (ESWriter esw : esWriters) {
                     esw.send("reset");
                 }
 
                 //nummer 5
-                sendNumber(figureArrays.getPlayer1number5());
-                sendNumber(figureArrays.getPlayer2number5());
-                Thread.sleep(1000);
+                sendFigure(figureArrays.getPlayer1number5(), figureArrays.getPlayer2number5());
+                Thread.sleep(1100);
                 for (ESWriter esw : esWriters) {
                     esw.send("reset");
                 }
 
                 //nummer 4
-                sendNumber(figureArrays.getPlayer1number4());
-                sendNumber(figureArrays.getPlayer2number4());
-                Thread.sleep(1000);
+                sendFigure(figureArrays.getPlayer1number4(), figureArrays.getPlayer2number4());
+                Thread.sleep(1100);
                 for (ESWriter esw : esWriters) {
                     esw.send("reset");
                 }
 
                 //nummer 3
-                sendNumber(figureArrays.getPlayer1number3());
-                sendNumber(figureArrays.getPlayer2number3());
-                Thread.sleep(1000);
+                sendFigure(figureArrays.getPlayer1number3(), figureArrays.getPlayer2number3());
+                Thread.sleep(1100);
                 for (ESWriter esw : esWriters) {
                     esw.send("reset");
                 }
 
                 //nummer 2
-                sendNumber(figureArrays.getPlayer1number2());
-                sendNumber(figureArrays.getPlayer2number2());
-                Thread.sleep(1000);
+                sendFigure(figureArrays.getPlayer1number2(), figureArrays.getPlayer2number2());
+                Thread.sleep(1100);
                 for (ESWriter esw : esWriters) {
                     esw.send("reset");
                 }
 
                 //nummer 1
-                sendNumber(figureArrays.getPlayer1number1());
-                sendNumber(figureArrays.getPlayer2number1());
-                Thread.sleep(1000);
+                sendFigure(figureArrays.getPlayer1number1(), figureArrays.getPlayer2number1());
+                Thread.sleep(1100);
                 for (ESWriter esw : esWriters) {
                     esw.send("reset");
                 }
 
                 //nummer 0
-                sendNumber(figureArrays.getPlayer1number0());
-                sendNumber(figureArrays.getPlayer2number0());
-                Thread.sleep(1000);
+                sendFigure(figureArrays.getPlayer1number0(), figureArrays.getPlayer2number0());
+                Thread.sleep(1100);
                 for (ESWriter esw : esWriters) {
                     esw.send("reset");
                 }
+
+                //skicka start till klienter
+                for (AndroidWriter aw : androidWriters) {
+                    aw.send("start");
+                }
+                System.out.println("Skickade start");
 
                 //starta game-tråd
                 gameThread = new Thread(new GameThread());
                 gameThread.start();
                 System.out.println("GameThread startad");
-            } catch(InterruptedException e){
+            } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
-
-        private void sendNumber(String[] list){
-            for (ESWriter esw : esWriters) {
-                for (int i = 0; i < list.length; i++) {
-                    esw.send(list[i]);
-                }
+    }
+    private void sendFigure(String[] list1, String[] list2){
+        for (ESWriter esw : esWriters) {
+            for (int i = 0; i < list1.length; i++) {
+                esw.send(list1[i]);
+                esw.send(list2[i]);
+            }
+        }
+    }
+    private void sendFigure(String[] list){
+        for (ESWriter esw : esWriters) {
+            for (int i = 0; i < list.length; i++) {
+                esw.send(list[i]);
             }
         }
     }

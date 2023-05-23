@@ -40,6 +40,7 @@ public class Player implements Serializable {
     }
     public void increasePoints() {
         points++;
+        System.out.println("Spelare: " + name + "\nPoäng: " + points);
     }
     public boolean isWinner() {
         return winner;
@@ -48,10 +49,12 @@ public class Player implements Serializable {
     public void setWinner(boolean winner) {
         this.winner = winner;
     }
-    public String[] ourToString(){
-        String[] list = new String[2];
-        list[0] = getName();
-        list[1] = String.valueOf(getPoints());
+    public String[] toStringArray(){
+        String[] list = new String[4];
+        list[0] = String.valueOf(playerNumber);
+        list[1] = name;
+        list[2] = String.valueOf(points);
+        list[3] = String.valueOf(winner);
         return list;
     }
 }

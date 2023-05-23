@@ -11,22 +11,30 @@ public class Game {
     private boolean atEnd;
     private int delay;
     private int bounceCounter;
+    private Random r = new Random();
     public Game() {
         restartGame();
     }
 
     public void restartGame() {
         atEnd = false;
-        Random r = new Random();
-        //int x = r.nextInt(5);
-        //int y = r.nextInt(2) + 5;
-        currentPosition = new Point(4, 5);
-        lastPosition = new Point(4, 4);
+        int x = r.nextInt(5);
+        int y = r.nextInt(2) + 4;
+        currentPosition = new Point(x, y);
+        if (y == 4) {
+            lastPosition = new Point(x, 3);
+        } else {
+            lastPosition = new Point(x, 6);
+        }
         p1.resetPoints();
         p2.resetPoints();
         p1.setWinner(false);
         p2.setWinner(false);
-        delay = 1000;
+        p1.setName(null);
+        p2.setName(null);
+        p1.setPlayerNumber(1);
+        p2.setPlayerNumber(2);
+        delay = 750;
         bounceCounter = 0;
     }
 
@@ -73,15 +81,17 @@ public class Game {
     }
 
     public boolean bounce(int millis) {
-        if (millis < ((delay/5)*2)) {
+        if (millis < ((delay/5)*3)) {
             setAtEnd(false);
-            bounceLeft();
-        } else if (millis <= ((delay/5)*3)) {
-            setAtEnd(false);
-            bounceUp();
+            boolean bounceLeft = 0 == r.nextInt(2);
+            if (bounceLeft) {
+                bounceLeft();
+            } else {
+                bounceRight();
+            }
         } else if (millis <= delay) {
             setAtEnd(false);
-            bounceRight();
+            bounceUp();
         } else {
             setAtEnd(true);
             return false;
@@ -89,6 +99,7 @@ public class Game {
         bounceCounter++;
         if (bounceCounter % 2 == 0) {
             delay = 9*delay/10;
+            System.out.println("Delay: " + delay);
         }
         updatePosition();
         return true;

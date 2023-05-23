@@ -1,3 +1,9 @@
+/**
+ * This class contains several string arrays which consists of
+ * a number of coordinates representing different figures.
+ *
+ * @author Tilde Lundqvist
+ */
 public class FigureArrays {
 
     private final String[] player1number0 = new String[12];
