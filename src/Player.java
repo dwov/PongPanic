@@ -1,12 +1,12 @@
-package Shared;
-
 import java.io.Serializable;
 
-public class Player implements Serializable {
+/**
+ * This class handles a player. It keeps track of name, points, player number as well as if it has won or not.
+ */
+public class Player {
     private String name;
     private int points;
     private int playerNumber;
-    private static final long serialVersionUID = 1234L;
     private boolean winner = false;
 
     public Player() {

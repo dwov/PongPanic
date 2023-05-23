@@ -48,6 +48,14 @@ public class TestDemoServer {
                     ESWriter esWriter = new ESWriter(socket);
                     esWriters.add(esWriter);
 
+                    /*if (esWriters.size() == 2) {
+                        for (ESWriter esw : esWriters) {
+                            esw.send("reset");
+                            sendFigure(figureArrays.getPlayer1number1());
+                            sendFigure(figureArrays.getPlayer2number2());
+                        }
+                    }*/
+
                     ESReaderThread = new Thread(new ESReader(socket, esWriter));
                     ESReaderThread.start();
 
@@ -82,13 +90,6 @@ public class TestDemoServer {
         }
         @Override
         public void run() {
-            /*if (esWriters.size() == 2) {
-                for (ESWriter esw : esWriters) {
-                    esw.send("reset");
-                    sendFigure(figureArrays.getPlayer1number1());
-                    sendFigure(figureArrays.getPlayer2number2());
-                }
-            }*/
             try {
                 while (true) {
                     String string = stringBuffer.get();
@@ -156,7 +157,7 @@ public class TestDemoServer {
                             public void run() {
                                 try {
                                     esWriters.remove(esWriter);
-                                    gameThread.interrupt();
+                                    //gameThread.interrupt();
                                     ESWriterThread.interrupt();
                                     in.close();
                                     socket.close();
@@ -164,7 +165,7 @@ public class TestDemoServer {
                                     e.printStackTrace();
                                 }
                             }
-                        }, 12000);
+                        }, 5000);
                     } else if (inputLine.startsWith("timer")) {
                         String[] array = inputLine.split(":");
                         System.out.println("timer: " + array[1]);
@@ -220,16 +221,8 @@ public class TestDemoServer {
 
                                 androidWriters.clear();
 
-                                try {
-                                    Thread.sleep(10000);
-                                } catch (InterruptedException e) {
-                                    throw new RuntimeException(e);
-                                }
-                                for (ESWriter esw : esWriters) {
-                                    esw.send("reset");
-                                }
-                                sendFigure(figureArrays.getPlayer1number1());
-                                sendFigure(figureArrays.getPlayer2number2());
+                                Thread playerNumberThread = new Thread(new ShowPlayerNumber());
+                                playerNumberThread.start();
                             }
                         }
                     }
@@ -247,6 +240,22 @@ public class TestDemoServer {
                     e.printStackTrace();
                 }
             }
+        }
+    }
+
+    public class ShowPlayerNumber implements Runnable {
+        @Override
+        public void run() {
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            for (ESWriter esw : esWriters) {
+                esw.send("reset");
+            }
+            sendFigure(figureArrays.getPlayer1number1());
+            sendFigure(figureArrays.getPlayer2number2());
         }
     }
     public class GameThread implements Runnable {

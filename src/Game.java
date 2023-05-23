@@ -1,8 +1,11 @@
-import Shared.Player;
-
 import java.awt.*;
 import java.util.*;
 
+/**
+ * This class handles a pong game. The Game class keeps track of a ball in the form of a coordinate
+ * as well as two players in the form of Player objects. It has methods for updating the position
+ * and handling bounce among others. It also handles the players individual points.
+ */
 public class Game {
     private Point lastPosition;
     private Point currentPosition;
