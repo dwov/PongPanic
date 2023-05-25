@@ -11,7 +11,7 @@ public class Server {
     public Server(int ISPort, int androidPort) {
         this.ISPort = ISPort;
         this.androidPort = androidPort;
-        //new Thread(new Connection()).start();
+        new Thread(new Connection()).start();
         highScore[0][0] = "Test1";
         highScore[0][1] = "25";
         highScore[1][0] = "Test2";
