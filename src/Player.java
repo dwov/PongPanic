@@ -1,7 +1,9 @@
 import java.io.Serializable;
 
 /**
- * This class handles a player. It keeps track of name, points, player number as well as if it has won or not.
+ * This class handles a player. It keeps track of name, points, player number as winner status.
+ *
+ * @author Tilde Lundqvist & Samuel Palmhager
  */
 public class Player {
     private String name;
@@ -32,23 +34,20 @@ public class Player {
     public int getPlayerNumber() {
         return playerNumber;
     }
+
     public void setPlayerNumber(int playerNumber) {
         this.playerNumber = playerNumber;
     }
-    public void setPoints(int points) {
-        this.points = points;
-    }
+
     public void increasePoints() {
         points++;
         System.out.println("Spelare: " + name + "\nPoäng: " + points);
-    }
-    public boolean isWinner() {
-        return winner;
     }
 
     public void setWinner(boolean winner) {
         this.winner = winner;
     }
+
     public String[] toStringArray(){
         String[] list = new String[4];
         list[0] = String.valueOf(playerNumber);

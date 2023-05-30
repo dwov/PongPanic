@@ -4,7 +4,9 @@ import java.util.*;
 /**
  * This class handles a pong game. The Game class keeps track of a ball in the form of a coordinate
  * as well as two players in the form of Player objects. It has methods for updating the position
- * and handling bounce among others. It also handles the players individual points.
+ * and handling bounce, among others.
+ *
+ * @author Tilde Lundqvist & Samuel Palmhager
  */
 public class Game {
     private Point lastPosition;
@@ -19,6 +21,9 @@ public class Game {
         restartGame();
     }
 
+    /**
+     * This method restores all data to its initial values and randomizes a starting point for the pong ball.
+     */
     public void restartGame() {
         atEnd = false;
         int x = r.nextInt(5);
@@ -53,6 +58,10 @@ public class Game {
         lastPosition = last;
     }
 
+    /**
+     * This method updates the pong ball's position based on its last.
+     * It handles bounce as well as checks if it is at the end of the board.
+     */
     public void updatePosition() {
         int ly = lastPosition.y;
         int cy = currentPosition.y;
@@ -83,6 +92,12 @@ public class Game {
         }
     }
 
+    /**
+     * This method handles bounce based on value of millis and updates delay.
+     * True is returned if value is okay, else false.
+     * @param millis the time in milliseconds
+     * @return a boolean
+     */
     public boolean bounce(int millis) {
         if (millis < ((delay/5)*3)) {
             setAtEnd(false);
@@ -108,6 +123,9 @@ public class Game {
         return true;
     }
 
+    /**
+     * This method updates position to change course upwards.
+     */
     private void bounceUp() {
         if (currentPosition.y == 9) {
             setLastPosition(new Point(currentPosition.x, currentPosition.y+1));
@@ -118,6 +136,9 @@ public class Game {
         }
     }
 
+    /**
+     * This method updates position to change course to left.
+     */
     private void bounceLeft() {
         if(currentPosition.y == 9){
             setLastPosition(new Point(currentPosition.x+1, currentPosition.y+1));
@@ -128,6 +149,9 @@ public class Game {
         }
     }
 
+    /**
+     * This method updates position to change course to right.
+     */
     private void bounceRight() {
         if (currentPosition.y == 9) {
             setLastPosition(new Point(currentPosition.x - 1, currentPosition.y + 1));
@@ -156,7 +180,6 @@ public class Game {
 
     public void setAtEnd(boolean atEnd) {
         this.atEnd = atEnd;
-        System.out.println("atEnd blir " + atEnd);
     }
 
     public int getDelay() {

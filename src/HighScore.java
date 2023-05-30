@@ -6,6 +6,7 @@ import java.util.Scanner;
 
 /**
  * This class handles a list of a maximum of ten high scores.
+ *
  * @author Tilde Lundqvist
  */
 public class HighScore {
@@ -63,31 +64,6 @@ public class HighScore {
             reader.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
-        }
-    }
-
-    /**
-     * Sorts the high score list.
-     */
-    private void firstSortHighScoreList() {
-        boolean swapped = true;
-        int j = 0;
-        String tempName;
-        int tempPoints;
-        while (swapped) {
-            swapped = false;
-            j++;
-            for (int i = 0; i < highScore.length - j; i++) {
-                if (highScore[i][1] != null && highScore[i + 1][1] != null && Integer.parseInt(highScore[i][1]) <= Integer.parseInt(highScore[i + 1][1])) {
-                    tempName = highScore[i][0];
-                    tempPoints = Integer.parseInt(highScore[i][1]);
-                    highScore[i][0] = highScore[i + 1][0];
-                    highScore[i + 1][0] = tempName;
-                    highScore[i][1] = highScore[i + 1][1];
-                    highScore[i + 1][1] = tempPoints + "";
-                    swapped = true;
-                }
-            }
         }
     }
 
